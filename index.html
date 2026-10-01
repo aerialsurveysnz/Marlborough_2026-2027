@@ -1,76 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
+  <meta charset='utf-8' />
   <title>Mapbox GeoJSON Layer</title>
-  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.css" rel="stylesheet" />
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <script src='https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.css' rel='stylesheet' />
   <style>
     body { margin: 0; padding: 0; }
     #map { position: absolute; top: 0; bottom: 0; width: 100%; }
   </style>
 </head>
 <body>
-  <div id="map"></div>
+  <div id='map'></div>
 
   <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoiamFtZXMtbWNrZW56aWUtYXNsIiwiYSI6ImNsaHBtYXo1aDA4MWczZ281bXJhbnc0dGMifQ.8pxJxAy6HV0CQfuibaIFmw';
 
-    const OPENWEATHER_API_KEY = '8f2e16425869628b41a4e746f84f097a';
-
     var map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/mapbox/satellite-streets-v12',
-      center: [173.4957, -41.8192],
+      center: [173.4957,-41.8192],
       zoom: 8
     });
-    map.on('error', function (e) {
-  console.error('Map error:', e.error || e);
-});
-
-    // Add or refresh the current cloudiness raster layer.
-    function addCloudLayer() {
-      const threeHoursInSeconds = 3 * 60 * 60;
-      const currentMapTime =
-        Math.floor(Date.now() / 1000 / threeHoursInSeconds) * threeHoursInSeconds;
-
-      // Remove the previous layer and source when refreshing.
-      if (map.getLayer('CloudLayer')) {
-        map.removeLayer('CloudLayer');
-      }
-      if (map.getSource('CloudSource')) {
-        map.removeSource('CloudSource');
-      }
-
-      map.addSource('CloudSource', {
-        type: 'raster',
-        tiles: [
-          `https://maps.openweathermap.org/maps/2.0/weather/CL/{z}/{x}/{y}?date=${currentMapTime}&opacity=0.65&appid=${encodeURIComponent(OPENWEATHER_API_KEY)}`
-        ],
-        tileSize: 256,
-        attribution: 'Weather data © OpenWeather'
-      });
-
-      // Keep the cloud layer below the project and coverage polygons.
-      const insertBefore = map.getLayer('ProjectLayer1')
-        ? 'ProjectLayer1'
-        : undefined;
-
-      map.addLayer({
-        id: 'CloudLayer',
-        type: 'raster',
-        source: 'CloudSource',
-        paint: {
-          'raster-opacity': 1
-        }
-      }, insertBefore);
-    }
 
     map.on('load', function () {
-      // Add clouds, then refresh them every three hours.
-      addCloudLayer();
-      setInterval(addCloudLayer, 3 * 60 * 60 * 1000);
+      // Add your sources and layers here...
 
       map.addSource('ProjectArea1', {
         type: 'geojson',
@@ -112,116 +67,88 @@
         type: 'circle',
         source: 'ProjectCentre1',
         paint: {
-          'circle-radius': [
-            'interpolate',
-            ['exponential', 1.10],
-            ['zoom'],
-            0,
-            0.5,
-            19,
-            15
-          ],
-          'circle-color': 'white'
-        }
+				'circle-radius': [
+                                'interpolate',
+                                ['exponential', 1.10],
+                                ['zoom'],
+                                0,
+                                0.5,
+                                19,
+                                15
+                                ],
+                    'circle-color': 'white'
+            }
       });
+  // 🔹 Helper: always opens progress.html for hard-coded projectRef
+  function openProgressPopup({ coordinates, descriptionHTML}) {
+    const projectRef = "PGRM3353"; // <-- Hard-coded here
+    
+   // const fullContent = document.createElement('div');
 
-      // Opens progress.html for the hard-coded project reference.
-      function openProgressPopup({ coordinates, descriptionHTML }) {
-        const projectRef = 'PGRM3353';
+// Outer container for popup
+  const fullContent = document.createElement('div');
+  fullContent.style.display = 'flex';
+  fullContent.style.flexDirection = 'row';
+  fullContent.style.gap = '10px';     // spacing between left and right
+  fullContent.style.alignItems = 'flex-start';
 
-        const fullContent = document.createElement('div');
-        fullContent.style.display = 'flex';
-        fullContent.style.flexDirection = 'row';
-        fullContent.style.gap = '10px';
-        fullContent.style.alignItems = 'flex-start';
+  // Left column (description text)
+  const desc = document.createElement('div');
+  desc.innerHTML = descriptionHTML;
+  desc.style.maxWidth = '300px';   // keep it tidy
+  fullContent.appendChild(desc);
 
-        const desc = document.createElement('div');
-        desc.innerHTML = descriptionHTML;
-        desc.style.maxWidth = '300px';
-        fullContent.appendChild(desc);
+    const frame = document.createElement('iframe');
+    frame.src = 'progress.html?ref=' + encodeURIComponent(projectRef) + '&t=' + Date.now();
+    frame.style.width = '600px';
+    frame.style.height = '240px';
+    frame.style.border = '0';
+    fullContent.appendChild(frame);
 
-        const frame = document.createElement('iframe');
-        frame.src =
-          'progress.html?ref=' + encodeURIComponent(projectRef) + '&t=' + Date.now();
-        frame.style.width = '600px';
-        frame.style.height = '240px';
-        frame.style.border = '0';
-        fullContent.appendChild(frame);
+    const popup = new mapboxgl.Popup({ closeOnClick: true, maxWidth: '800px'})
+      .setLngLat(coordinates)
+      .setDOMContent(fullContent)
+      .addTo(map);
 
-        const popup = new mapboxgl.Popup({
-          closeOnClick: true,
-          maxWidth: '800px'
-        })
-          .setLngLat(coordinates)
-          .setDOMContent(fullContent)
-          .addTo(map);
-
-        popup.on('close', () => {
-          try {
-            frame.src = 'about:blank';
-          } catch {}
-          frame.remove();
-        });
-      }
-
-      // Click handler.
-      map.on('click', 'ProjectLayer1', function () {
-        const featuresPCentre = map.queryRenderedFeatures({
-          layers: ['PCentre1']
-        });
-        const featuresCoverage = map.queryRenderedFeatures({
-          layers: ['CoverageLayer1']
-        });
-        const featuresProject = map.queryRenderedFeatures({
-          layers: ['ProjectLayer1']
-        });
-
-        if (featuresPCentre.length > 0 && featuresProject.length > 0) {
-          const featurePCentre = featuresPCentre[0];
-          const featureCoverage = featuresCoverage[0];
-          const coordinates = featurePCentre.geometry.coordinates.slice();
-
-          const description =
-            "<span style='color:#7FBA00;font-size:14px;'><b>" +
-            featurePCentre.properties.Proj_Name +
-            '</b></span><br>' +
-            "<span style='color: black;'><b>Project Code: </b>" +
-            featurePCentre.properties.Project +
-            '<br>' +
-            '<b>Survey Type: </b>' +
-            featurePCentre.properties.Survey_Typ +
-            '<br>' +
-            '<b>Sun Angle: </b> 35 Degrees<br>' +
-            '<b>Tide: </b> 1.5 & 3 hrs +- Low Tide Degrees<br>' +
-            '<b>Imagery GSD: </b>' +
-            featurePCentre.properties.OrthoGSD_m +
-            '<br>' +
-            '<b>Area: </b>' +
-            featurePCentre.properties.Area.toLocaleString() +
-            ' km²<br>' +
-            '<b>Captured Area: </b>' +
-            featureCoverage.properties.Area.toLocaleString() +
-            ' km²<br>' +
-            '<b>Coverage To Date: </b>' +
-            featureCoverage.properties.Percentage_Coverage +
-            '%<br>';
-
-          openProgressPopup({
-            coordinates,
-            descriptionHTML: description
-          });
-        }
-      });
-
-      // Cursor feedback.
-      map.on('mouseenter', 'ProjectLayer1', () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-
-      map.on('mouseleave', 'ProjectLayer1', () => {
-        map.getCanvas().style.cursor = '';
-      });
+    popup.on('close', () => {
+      try { frame.src = 'about:blank'; } catch {}
+      frame.remove();
     });
+  }
+
+  // 🔹 Click handler
+  map.on('click','ProjectLayer1', function (e) {
+ const featuresPCentre  = map.queryRenderedFeatures({ layers: ['PCentre1'] });
+  const featuresCoverage = map.queryRenderedFeatures({ layers: ['CoverageLayer1'] });
+  const featuresProject  = map.queryRenderedFeatures({ layers: ['ProjectLayer1'] });
+
+    if (featuresPCentre.length > 0 && featuresProject.length > 0) {
+      const featurePCentre = featuresPCentre[0];
+      const featureCoverage = featuresCoverage[0];
+
+      const coordinates = featurePCentre.geometry.coordinates.slice();
+
+
+      const description =
+        "<span style='color:#7FBA00;font-size:14px;'><b>" + featurePCentre.properties.Proj_Name + "</b></span><br>" +
+        "<span style='color: black;'><b>Project Code: </b>" + featurePCentre.properties.Project + "</br>" +
+        "<b>Survey Type: </b>" + featurePCentre.properties.Survey_Typ + "<br>" +
+        "<b>Sun Angle: </b> 35 Degrees<br>" +
+        "<b>Tide: </b> 1.5 & 3 hrs +- Low Tide Degrees<br>" +
+        "<b>Imagery GSD: </b>" + featurePCentre.properties.OrthoGSD_m + "<br>" +
+        "<b>Area: </b>" + (featurePCentre.properties.Area).toLocaleString() + " km²<br>" +
+        "<b>Captured Area: </b>" + (featureCoverage.properties.Area).toLocaleString() + " km²<br>" +
+        "<b>Coverage To Date: </b>" + featureCoverage.properties.Percentage_Coverage + "%<br>";
+
+      openProgressPopup({ coordinates, descriptionHTML: description });
+    }
+  });
+
+  // 🔹 Cursor feedback
+  map.on('mouseenter', 'ProjectLayer1', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'ProjectLayer1', () => { map.getCanvas().style.cursor = ''; });
+});
+
   </script>
 </body>
 </html>
